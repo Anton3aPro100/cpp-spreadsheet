@@ -14,54 +14,39 @@ Sheet::~Sheet() {;}
 
 void Sheet::SetCell(Position pos, std::string text) {
     
-    if (!pos.IsValid()) {
-         throw InvalidPositionException("Position is WRONG!!! SET");
-    }
-    //std::cout<<"&&&&&&&&&&&&&&&111"<<std::endl;
+    CheckValid(pos);
+   
     bool is_formula = IsFormula(text);
-    if (is_formula){
-       // std::cout<<"fffffffffffff11111"<<std::endl;
+    
+    if (is_formula) {
+      
         std::unique_ptr<FormulaInterface> formula = ParseFormula(text.substr(1));
 
-      //  std::cout<<"ffffffffffffff2222222222222"<<std::endl;
         std::vector<Position> outgoing_edges = formula->GetReferencedCells();
-        if (outgoing_edges.size() > 0){
-          //  std::cout<<"ffffffffffffff444444444444444"<<std::endl;
-            if (!IsNoCiclesCreate(pos, outgoing_edges)){
-           //    std::cout<<"Cicle!!!!!!"<<std::endl;
+        if (outgoing_edges.size() > 0) {
+            if (!IsNoCiclesCreate(pos, outgoing_edges)) {
                 throw CircularDependencyException("Cicle!!!");
             }
         }
-      // std::cout<<"ffffffffffffff33333333333333332"<<std::endl;
+     
     }
-   // std::cout<<"&&&&&&&&&&&&&&&222222"<<std::endl;
+  
     MayBeChangeSize(pos);
-
-    //std::cout<<"22222222222222"<<std::endl;
     
-    if (GetCell(pos) == nullptr){
-      //  std::cout<<"---------------1"<<std::endl;
+    if (GetCell(pos) == nullptr) {
         AddNewCell(pos);
-      //  std::cout<<"--------------2"<<std::endl;
     }
     else{
-        
         if (cells_[pos.row][pos.col]->HasValue()){
-            
-            
-
-            
+    
             std::set<Position> parents;
             GetAllParents(pos, parents);
             parents.insert(pos);
             Invalide_Values(parents);
         } 
-        
-        //for (const Position edge)
+       
         RemoveOldEdges(pos);
     }
-
-   // std::cout<<"------------------3"<<std::endl;
 
     cells_[pos.row][pos.col]->Set(text, is_formula);
     if (is_formula){
@@ -71,9 +56,9 @@ void Sheet::SetCell(Position pos, std::string text) {
 }
 
 const CellInterface* Sheet::GetCell(Position pos) const {
-    if (!pos.IsValid()) {
-         throw InvalidPositionException("Position is WRONG!!! GET");
-    }
+    
+    CheckValid(pos);
+
     if (pos.row <= max_row_ && pos.col <= max_col_) {
         return cells_.at(pos.row).at(pos.col).get();
     }
@@ -82,9 +67,9 @@ const CellInterface* Sheet::GetCell(Position pos) const {
     }
 }
 CellInterface* Sheet::GetCell(Position pos) {
-    if (!pos.IsValid()) {
-         throw InvalidPositionException("Position is WRONG!!! GET");
-    }
+    
+    CheckValid(pos);
+    
     if (pos.row <= max_row_ && pos.col <= max_col_) {
         return cells_[pos.row][pos.col].get();
     }
@@ -94,18 +79,18 @@ CellInterface* Sheet::GetCell(Position pos) {
 }
 
 void Sheet::ClearCell(Position pos) {
-    if (!pos.IsValid()) {
-         throw InvalidPositionException("Position is WRONG!!! CLear");
-    }
+    
+    CheckValid(pos);
+
     if (pos.row > max_row_ || pos.col > max_col_) {
          return;
     }
 
 
-    if (GetCell(pos) == nullptr){
+    if (GetCell(pos) == nullptr) {
         return;
     }
-    if (cells_[pos.row][pos.col]->IsReferenced()){
+    if (cells_[pos.row][pos.col]->IsReferenced()) {
             std::set<Position> parents;
             GetAllParents(pos,parents);
             Invalide_Values(parents);
@@ -115,13 +100,13 @@ void Sheet::ClearCell(Position pos) {
     
   
     --filled_rows_[pos.row];
-    if (filled_rows_[pos.row] == 0){
+    if (filled_rows_[pos.row] == 0) {
         filled_rows_.erase(pos.row);
         if (filled_rows_.size() == 0) {
             max_row_ = -1;
         }   
         else {
-            if (max_row_ == pos.row){
+            if (max_row_ == pos.row) {
          
                 max_row_ = filled_rows_.rbegin()->first;
 
@@ -131,13 +116,13 @@ void Sheet::ClearCell(Position pos) {
     
     
     --filled_cols_[pos.col];
-    if (filled_cols_[pos.col] == 0){
+    if (filled_cols_[pos.col] == 0) {
         filled_cols_.erase(pos.col);
         if (filled_cols_.size() == 0) {
             max_col_ = -1;
         }
         else{
-            if (max_col_ == pos.col){
+            if (max_col_ == pos.col) {
                 max_col_ = filled_cols_.rbegin()->first;
             }
         }
@@ -180,7 +165,7 @@ void Sheet::PrintValues(std::ostream& output) const {
             else{
                 ;
             }
-            if (j<max_col_){
+            if (j<max_col_) {
                     output<<'\t';
                 }
         }
@@ -197,7 +182,7 @@ void Sheet::PrintTexts(std::ostream& output) const {
                 
             }
             else{
-                ;//output<<""<<'\t';
+                ;
             }
         if (j<max_col_){
                     output<<'\t';
@@ -243,14 +228,14 @@ void Sheet::AddEmptyRows(int row, int col) {
 }
 //////////NEW//////////////////
 
-bool Sheet::IsFormula(const std::string& text){
-    if (text.size() == 0){
+bool Sheet::IsFormula(const std::string& text) {
+    if (text.size() == 0) {
         return false;
     }
-     if (text[0] == '=' && text.size() > 1){
+     if (text[0] == '=' && text.size() > 1) {
         return true;
      }
-     else{
+     else {
         return false;
      }
 }
@@ -258,7 +243,7 @@ bool Sheet::IsFormula(const std::string& text){
  bool Sheet::IsNoCiclesCreate(Position pos, const std::vector<Position>& outgoing_edges) const{
     std::set<Position> parents;
    
-    if (GetCell(pos) != nullptr){
+    if (GetCell(pos) != nullptr) {
     
         GetAllParents(pos, parents);
     }
@@ -268,12 +253,12 @@ bool Sheet::IsFormula(const std::string& text){
   
     for( const Position edge : outgoing_edges)
     {
-        if (parents.count(edge) == 1){
+        if (parents.count(edge) == 1) {
             return false;
         }
         else {
           
-            if (HasNoLinkOnParents(edge, validated_vertices, parents)){
+            if (HasNoLinkOnParents(edge, validated_vertices, parents)) {
               
                 validated_vertices.insert(edge);
             }
@@ -288,16 +273,16 @@ bool Sheet::IsFormula(const std::string& text){
 
 }
 
-bool Sheet::HasNoLinkOnParents(Position pos, std::set<Position>& validated_vertices, const std::set<Position>& parents) const{
+bool Sheet::HasNoLinkOnParents(Position pos, std::set<Position>& validated_vertices, const std::set<Position>& parents) const {
      
     if (GetCell(pos)!=nullptr) {
         for ( const Position edge : cells_[pos.row][pos.col]->GetReferencedCells()){
            
-            if (parents.count(edge) == 1){
+            if (parents.count(edge) == 1) {
                 return false;
             }
             else {
-                if (HasNoLinkOnParents(edge,validated_vertices, parents)){
+                if (HasNoLinkOnParents(edge,validated_vertices, parents)) {
                     validated_vertices.insert(edge);
                 }
                 else {
@@ -309,9 +294,9 @@ bool Sheet::HasNoLinkOnParents(Position pos, std::set<Position>& validated_verti
     return true;
 }
 
-void Sheet::GetAllParents(Position pos, std::set<Position>& parents) const{
+void Sheet::GetAllParents(Position pos, std::set<Position>& parents) const {
     
-    for (const Position edge : cells_[pos.row][pos.col]->GetIngoingEdges()){
+    for (const Position edge : cells_[pos.row][pos.col]->GetIngoingEdges()) {
         if (cells_[edge.row][edge.col]->HasValue() && parents.count(edge) == 0){
             parents.insert(edge);
             GetAllParents(edge, parents);
@@ -321,12 +306,12 @@ void Sheet::GetAllParents(Position pos, std::set<Position>& parents) const{
 }
 
 void Sheet::Invalide_Values(const std::set<Position>& parents){
-    for (const Position pos : parents){
+    for (const Position pos : parents) {
         cells_[pos.row][pos.col]->InvalideValue();
     }
 }
 
-void Sheet::RemoveOldEdges(Position pos){
+void Sheet::RemoveOldEdges(Position pos) {
     for (Position edge : GetCell(pos) -> GetReferencedCells()){
         
         if (!edge.IsValid()){
@@ -339,7 +324,7 @@ void Sheet::RemoveOldEdges(Position pos){
     }
 }
 
-void Sheet::AddNewEdges(Position pos){
+void Sheet::AddNewEdges(Position pos) {
     for (Position edge : GetCell(pos) -> GetReferencedCells()){
         if (!edge.IsValid()){
             continue;
@@ -353,20 +338,20 @@ void Sheet::AddNewEdges(Position pos){
     }
 }
 void Sheet::MayBeChangeSize(Position pos){
-    if (cells_.size() == 0){
+    if (cells_.size() == 0) {
         max_row_ = pos.row;
         max_col_ = pos.col;
         AddEmptyRows(pos.row + 1, pos.col +1);
     }
     else{
-        if (pos.row > max_row_){
+        if (pos.row > max_row_) {
             max_row_ = pos.row;
             int delta = pos.row - cells_.size() + 1;
             if (delta > 0) {
                 AddEmptyRows(delta);
             }
         }
-        if (pos.col > max_col_){
+        if (pos.col > max_col_) {
         
             max_col_ = pos.col;
         
@@ -379,7 +364,7 @@ void Sheet::MayBeChangeSize(Position pos){
     }
 }
 
-void Sheet::AddNewCell(Position pos){
+void Sheet::AddNewCell(Position pos) {
     cells_[pos.row][pos.col] = std::make_unique<Cell>(*this);
      
     auto it1 = filled_rows_.find(pos.row);
@@ -396,5 +381,11 @@ void Sheet::AddNewCell(Position pos){
     }
     else {
         ++filled_cols_[pos.col];
+    }
+}
+
+void CheckValid(Position pos) {
+    if (!pos.IsValid()) {
+         throw InvalidPositionException("Position is WRONG!!!");
     }
 }

@@ -13,13 +13,11 @@ void Cell::Set(std::string text, bool is_formula) {
     outgoing_edges_.clear();
     
 
-    if (is_formula){
+    if (is_formula) {
         is_it_formula_ = true;
         formula_ = ParseFormula(text.substr(1));
-        text_ = '=' + formula_->GetExpression();
+        text_ = FORMULA_SIGN + formula_->GetExpression();
         outgoing_edges_ = formula_ -> GetReferencedCells();
-
-
 
     }
     else{
@@ -32,11 +30,12 @@ void Cell::Set(std::string text, bool is_formula) {
 
 void Cell::Clear() {
     is_it_formula_ = false;
-    text_="";
-    formula_=nullptr;
+    text_.clear();
+    formula_ = nullptr;
     outgoing_edges_.clear();
     value_.reset();
 }
+
 CellInterface::Value ConvertValue(const FormulaInterface::Value& formulaValue) {
     
     return std::visit([](auto&& arg) -> CellInterface::Value {
@@ -50,13 +49,13 @@ CellInterface::Value ConvertValue(const FormulaInterface::Value& formulaValue) {
         }
     }, formulaValue);
 }
+
 bool Cell::HasValue() const{
     return !(value_ == std::nullopt);  
 }
 
 CellInterface::Value Cell::GetValue() const  {
-    
-   
+
     if (HasValue()){
         return *value_;
     }
@@ -101,8 +100,8 @@ std::string Cell::GetText() const {
 
 
 
-bool Cell::IsReferenced() const{
-    if (ingoing_edges_.size() == 0){
+bool Cell::IsReferenced() const {
+    if (ingoing_edges_.empty()) {
         return false;
     }
     else{
@@ -112,19 +111,19 @@ bool Cell::IsReferenced() const{
 
 
 
-void Cell::InvalideValue(){
+void Cell::InvalideValue() {
     value_.reset();
 }
 
-void Cell::DeleteParent(Position pos){
+void Cell::DeleteParent(Position pos) {
     ingoing_edges_.erase(pos);
 }
 
-void Cell::AddParent(Position pos){
+void Cell::AddParent(Position pos) {
     ingoing_edges_.insert(pos);
 }
 
-std::set<Position> Cell::GetIngoingEdges(){
+std::set<Position> Cell::GetIngoingEdges() {
     return ingoing_edges_;
 }
 

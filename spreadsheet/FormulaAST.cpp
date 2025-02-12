@@ -146,35 +146,47 @@ public:
     FormulaInterface::Value Evaluate(const SheetInterface& sheet) const override {
         // Скопируйте ваше решение из предыдущих уроков.
         ExprPrecedence operation = GetPrecedence();
-       std::optional<double> lhs = GetDoubleValue(lhs_->Evaluate(sheet));
-       std::optional<double> rhs = GetDoubleValue(rhs_->Evaluate(sheet));
-        if (lhs && rhs){
-            double res;
-            if (operation == EP_ADD){
-                res = *lhs + *rhs;
-            }
-            if (operation == EP_SUB){
-                res = *lhs - *rhs;
-            } 
-            if (operation == EP_MUL){
-            res = *lhs * *rhs;
-            } 
-            if (operation == EP_DIV){
-                res = *lhs / *rhs;
-            } 
-            if (!std::isfinite(res)) {
+       
+       FormulaInterface::Value l_value = lhs_->Evaluate(sheet);
+       FormulaInterface::Value r_value = rhs_->Evaluate(sheet);
+
+       std::optional<double> l_opt = GetDoubleValue(l_value);
+       std::optional<double> r_opt = GetDoubleValue(r_value);
+        
+        /* 
+        Вы пишите: "Как понимаю если нет значения, то это ноль. Какой смысл тогда в проверке этой? Я про151 строку. Вы можете в конце проверить результат с помощью isfinite"
+
+        Нет, если GetDoubleValue() возвращает nullopt, то значит в этом узле FormulaError, и ,именно его, и надо возвратить. Если оба такие, то тогда любой из них,  и только, если оба вернут double, то делать вычисление. Я так и делал, а infinite я проверял и так, как раз в случае, если оба double.
+
+        Я немного переделал логику, так, мне кажется понятнее будет. И повторно не вызываю теперь lhs_->Evaluate(sheet); в случае FormulaError;  
+        */
+
+        if (l_opt == std::nullopt){
+            return l_value;
+        }
+        if (r_opt == std::nullopt){
+            return r_value;
+        }
+
+        double l_double = *l_opt;
+        double r_double = *r_opt;
+        double res;
+        if (operation == EP_ADD){
+            res = l_double + r_double;
+        }
+        if (operation == EP_SUB){
+            res = l_double - r_double;
+        } 
+        if (operation == EP_MUL){
+            res = l_double * r_double;
+        } 
+        if (operation == EP_DIV){
+            res = l_double / r_double;
+        } 
+        if (!std::isfinite(res)) {
             return FormulaError(FormulaError::Category::Arithmetic);
-            }     
-            return res;
-        }
-        else{
-            if (lhs) {
-                return rhs_->Evaluate(sheet);
-            }
-            else {
-                return lhs_->Evaluate(sheet);
-            }
-        }
+        }     
+            return res;   
     }
 
 private:

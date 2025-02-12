@@ -58,7 +58,7 @@ public:
     std::map<int, int> filled_cols_;
     int max_row_ = -1;
     int max_col_ = -1;
-    
-
    
 };
+
+void CheckValid(Position pos);
