@@ -4,6 +4,7 @@
 #include "FormulaLexer.h"
 #include "FormulaParser.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <memory>
@@ -72,7 +73,7 @@ public:
     virtual ~Expr() = default;
     virtual void Print(std::ostream& out) const = 0;
     virtual void DoPrintFormula(std::ostream& out, ExprPrecedence precedence) const = 0;
-    virtual double Evaluate(/*добавьте сюда нужные аргументы*/ args) const = 0;
+    virtual FormulaInterface::Value Evaluate(const SheetInterface& sheet) const = 0;
 
     // higher is tighter
     virtual ExprPrecedence GetPrecedence() const = 0;
@@ -142,8 +143,38 @@ public:
         }
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/) const override {
-			// Скопируйте ваше решение из предыдущих уроков.
+    FormulaInterface::Value Evaluate(const SheetInterface& sheet) const override {
+        // Скопируйте ваше решение из предыдущих уроков.
+        ExprPrecedence operation = GetPrecedence();
+       std::optional<double> lhs = GetDoubleValue(lhs_->Evaluate(sheet));
+       std::optional<double> rhs = GetDoubleValue(rhs_->Evaluate(sheet));
+        if (lhs && rhs){
+            double res;
+            if (operation == EP_ADD){
+                res = *lhs + *rhs;
+            }
+            if (operation == EP_SUB){
+                res = *lhs - *rhs;
+            } 
+            if (operation == EP_MUL){
+            res = *lhs * *rhs;
+            } 
+            if (operation == EP_DIV){
+                res = *lhs / *rhs;
+            } 
+            if (!std::isfinite(res)) {
+            return FormulaError(FormulaError::Category::Arithmetic);
+            }     
+            return res;
+        }
+        else{
+            if (lhs) {
+                return rhs_->Evaluate(sheet);
+            }
+            else {
+                return lhs_->Evaluate(sheet);
+            }
+        }
     }
 
 private:
@@ -180,8 +211,18 @@ public:
         return EP_UNARY;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
+    FormulaInterface::Value Evaluate(const SheetInterface& sheet) const override {
         // Скопируйте ваше решение из предыдущих уроков.
+        std::optional<double> res = GetDoubleValue(operand_->Evaluate(sheet));
+        if (res){
+            if (type_ == UnaryMinus){
+                return (*res) * (-1);
+            }
+            return *res;
+        }
+        else {
+            return operand_->Evaluate(sheet);
+        }
     }
 
 private:
@@ -211,8 +252,23 @@ public:
         return EP_ATOM;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
+    FormulaInterface::Value Evaluate(const SheetInterface& sheet) const override {
         // реализуйте метод.
+        if (!cell_->IsValid()) {
+            return FormulaError(FormulaError::Category::Ref);
+        }
+
+        const CellInterface* ptr = sheet.GetCell(*cell_);
+        if (ptr == nullptr) {
+            return 0.0;
+        }
+        else {
+
+            return Transform(ptr -> GetValue());
+           
+        
+        }
+
     }
 
 private:
@@ -237,7 +293,7 @@ public:
         return EP_ATOM;
     }
 
-    double Evaluate(/*добавьте нужные аргументы*/ args) const override {
+    FormulaInterface::Value Evaluate(const SheetInterface& sheet) const override {
         return value_;
     }
 
@@ -391,8 +447,8 @@ void FormulaAST::PrintFormula(std::ostream& out) const {
     root_expr_->PrintFormula(out, ASTImpl::EP_ATOM);
 }
 
-double FormulaAST::Execute(/*добавьте нужные аргументы*/ args) const {
-    return root_expr_->Evaluate(/*добавьте нужные аргументы*/ args);
+FormulaInterface::Value FormulaAST::Execute(const SheetInterface& sheet) const {
+    return root_expr_->Evaluate(sheet);
 }
 
 FormulaAST::FormulaAST(std::unique_ptr<ASTImpl::Expr> root_expr, std::forward_list<Position> cells)
@@ -402,3 +458,34 @@ FormulaAST::FormulaAST(std::unique_ptr<ASTImpl::Expr> root_expr, std::forward_li
 }
 
 FormulaAST::~FormulaAST() = default;
+
+std::vector<Position> FormulaAST::GetReferencedCells() const {
+    
+    std::vector<Position> vec(cells_.begin(), cells_.end());
+
+    std::sort(vec.begin(), vec.end());  
+    auto it = std::unique(vec.begin(), vec.end()); 
+    vec.erase(it, vec.end()); 
+    
+    return vec; 
+}
+
+
+
+std::optional<double> GetDoubleValue(const FormulaInterface::Value& value) {
+    if (const double* doublePtr = std::get_if<double>(&value)) {
+        return *doublePtr;
+    }
+    return std::nullopt;
+}
+
+FormulaInterface::Value Transform(const CellInterface::Value& value) {
+    return std::visit([](auto&& arg) -> FormulaInterface::Value  {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, std::string>) {
+            return FormulaError(FormulaError::Category::Value);
+        } else {
+            return arg; 
+        }
+    }, value);
+}
